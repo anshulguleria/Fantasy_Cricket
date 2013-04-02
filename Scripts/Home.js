@@ -977,8 +977,12 @@ $(function () {
             },
 
 
-            //call this method every time the user changes the composition 
-            //with context as this not some DOM element
+
+            /**
+             * This method is called each time the user changes the composition from the dropdown.
+             * the context(this) of this function is the userTeam object not the event element.
+             * The context is changed using the $.proxy method of jQuery
+             */
             setupComposition: function () {
                 //TODO: need to change this method if we want to keep the order as any order
                 var batsman = 0, allRounder = 0, keeper = 0, bowler = 0, index = 0;
@@ -1052,8 +1056,10 @@ $(function () {
 
             },
 
-            //setup binding and remove bindings should always be synced because all the registered events
-            //should be removed when deleting element
+            /**
+             * setup binding and remove bindings should always be synced because all the registered events should be
+             * removed when deleting element
+             */
             setUpBindings: function () {
                 //$('.remove-player', this.playerBlockElement).on('click', this.removePlayer);
                 $(this.playerBlockElement, this.rootElement).on('click.userTeam', this.removeElement, $.proxy(this.removePlayer, this));
@@ -1071,6 +1077,11 @@ $(function () {
                 $('body').on('userLoginLogout.userTeam.evnt', $.proxy(this.handleUserLoginLogout, this));
 
             },
+
+            /**
+             * this method should be called just before the setupbinding and removes all the bindings setup
+             * by the setUpBindings method
+             */
             removeBindings: function () {
                 //removing the handle choose player
                 $(this.rootElement).off('.userTeam');
@@ -1086,6 +1097,11 @@ $(function () {
                 $("#txtTeamName").off();
             },
 
+            /**
+             * @param e
+             * This function is called when the composition is changed from the composition dropdown
+             * and context(this) in this function is the userTeam object
+             */
             changeComposition: function (e) {
 
                 var $target = $(e.currentTarget);
