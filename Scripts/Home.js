@@ -804,7 +804,7 @@ $(function () {
                     Name: this.userTeamName,
                     PlayerIds: playerIDs,
                     Formation: this.userTeamCombination,
-                    CaptainId: this.userTeamCaptain,
+                    CaptainId: this.userTeamCaptain
                 };
                 return saveRQ;
             },
@@ -892,7 +892,7 @@ $(function () {
                 this.setUpBindings();
 
                 this.userTeamUIDataMap = CricManager.UIBizMap.createMapArray($(this.playerBlockElement, this.rootElement), this.bizHandle.userTeamList);
-                $captainUIElement = this.findCaptain();
+                var $captainUIElement = this.findCaptain();
                 if ($captainUIElement) {
                     $($captainUIElement).addClass('captain');
                 }
@@ -933,18 +933,10 @@ $(function () {
             hideSaving: function () {
                 //do some loader and saving loader logic here
             },
-            showLoading: function () {
-                //TODO: loading can be get from loading template
-                //TODO: Use proper loader
-                //$(this.rootElement).html('<div class="loader-ajax"><strong>Loading User Players.....</strong></div>');
-            },
-            hideLoading: function () {
-                //TODO: user proper loading and unloading methods
-                //$(this.rootElement).html('');
-            },
+
             showError: function (msg) {
                 if (msg) {
-                    showMessage(msg);
+                    window.showMessage(msg);
                     console && console.log("Err: " + msg);
                 }
                 //TODO: use better error mechanism
@@ -1003,28 +995,45 @@ $(function () {
                 while (index < this.userTeamUIDataMap.length) {
                     if (index < batsman) {
                         this.userTeamUIDataMap[index].uiElement.addClass('batsman');
-                        this.userTeamUIDataMap[index].data.Type = "Batsman";
+                        //that means earlier other player than batsman was there thus resetting its data
+                        // and setting data.Type to 'Batsman'
+                        if(this.userTeamUIDataMap[index].data.Type != 'Batsman'){
+                            this.userTeamUIDataMap[index].data = {Type:'Batsman'};
+                        }
+                        //else the player at that position is valid and will not be removed
+
+                        //this.userTeamUIDataMap[index].data.Type = "Batsman";
                         this.batsmanUIMap.push(this.userTeamUIDataMap[index]);
                         if (this.userTeamUIDataMap[index].data.Id) {
+                            //recalculating the counts too
                             this.batsmanCount++;
                         }
                     } else if (index < allRounder) {
                         this.userTeamUIDataMap[index].uiElement.addClass('allRounder');
-                        this.userTeamUIDataMap[index].data.Type = "AllRounder";
+                        if(this.userTeamUIDataMap[index].data.Type != 'AllRounder'){
+                            this.userTeamUIDataMap[index].data = {Type:'AllRounder'};
+                        }
+                        //this.userTeamUIDataMap[index].data.Type = "AllRounder";
                         this.allRounderUIMap.push(this.userTeamUIDataMap[index]);
                         if (this.userTeamUIDataMap[index].data.Id) {
                             this.allRounderCount++;
                         }
                     } else if (index < keeper) {
                         this.userTeamUIDataMap[index].uiElement.addClass('keeper');
-                        this.userTeamUIDataMap[index].data.Type = "WicketKeeper";
+                        if(this.userTeamUIDataMap[index].data.Type != 'WicketKeeper'){
+                            this.userTeamUIDataMap[index].data = {Type:'WicketKeeper'};
+                        }
+                        //this.userTeamUIDataMap[index].data.Type = "WicketKeeper";
                         this.keeperUIMap.push(this.userTeamUIDataMap[index]);
                         if (this.userTeamUIDataMap[index].data.Id) {
                             this.keeperCount++;
                         }
                     } else if (index < bowler) {
                         this.userTeamUIDataMap[index].uiElement.addClass('bowler');
-                        this.userTeamUIDataMap[index].data.Type = "Bowler";
+                        if(this.userTeamUIDataMap[index].data.Type != 'Bowler'){
+                            this.userTeamUIDataMap[index].data = {Type:'Bowler'};
+                        }
+                        //this.userTeamUIDataMap[index].data.Type = "Bowler";
                         this.bowlerUIMap.push(this.userTeamUIDataMap[index]);
                         if (this.userTeamUIDataMap[index].data.Id) {
                             this.bowlerCount++;
@@ -1032,6 +1041,10 @@ $(function () {
                     }
                     index += 1;
                 }
+                //TODO: Anshul
+                //recalculating the userTeamList as it also breaks when composition changed
+                //although it should not break if the validate composition works correctly
+                //thus when validateComposition is corrected these line should be removed
                 CricManager.UserTeam.Biz.userTeamList = [];
                 $.each(this.userTeamUIDataMap, function () {
                     CricManager.UserTeam.Biz.userTeamList.push(this.data);
@@ -1039,6 +1052,8 @@ $(function () {
 
             },
 
+            //setup binding and remove bindings should always be synced because all the registered events
+            //should be removed when deleting element
             setUpBindings: function () {
                 //$('.remove-player', this.playerBlockElement).on('click', this.removePlayer);
                 $(this.playerBlockElement, this.rootElement).on('click.userTeam', this.removeElement, $.proxy(this.removePlayer, this));
@@ -1082,8 +1097,13 @@ $(function () {
                     this.bizHandle.userTeamCombination = newComposition;
                     this.setupComposition();
 
+                    //set the markup for selected element
+                    //although this should not be necessary as we are refreshing the UI which resets all the
+                    //templates in this(userTeam) block
                     $(this.selectedCompositionElement, this.rootElement).html('<b>' + $selectedElement.text() + '</b>');
 
+                    //there should not be any need to do this refresh if we are validating the composition correctely
+                    //thus try to remove this method if the validateComposition method is corrected.
                     this.refreshUI();
 
                     console.log('changed composition to ' + newComposition);
@@ -1095,12 +1115,68 @@ $(function () {
 
 
             },
+
+            /*validate composition validates on the basis of:
+                * split count of the composition
+                * batsman, allRounder, keeper, bowler count.
+                * position of batsman, allRounder, keeper, bowler as per new composition.
+            */
             validateComposition: function (newComposition) {
                 var counts = newComposition.split('_');
+                var invalidElements = [], invalidIndexes = [];
+                var batsman = parseInt(count[1]), allRounder = parseInt(count[2]), keeper = parseInt(count[3]),
+                    bowler = parseInt(count[4]);
+                var total = batsman + allRounder + keeper + bowler;
+
+                var index =0;
                 if (counts.length == 5) {
-                    if (this.batsmanCount > counts[1] || this.allRounderCount > counts[2] || this.keeperCount > counts[3] || this.bowlerCount > counts[4]) {
+                    //check composition by count
+                    if (this.batsmanCount > counts[1] || this.allRounderCount > counts[2] || this.keeperCount > counts[3] ||
+                        this.bowlerCount > counts[4]) {
                         this.showError('You need to remove some players to change the combination.');
                         return false;
+                    } else {
+                        //validate composition by positions
+                        while(index < total){
+                            if(index < batsman){
+                                if(this.userTeamUIDataMap[index].data.Id &&
+                                    this.userTeamUIDataMap[index].data.Type != 'Batsman'){
+                                    invalidElements.push(this.userTeamUIDataMap[index].uiElement);
+                                    invalidIndexes.push(index);
+                                }
+                            } else if(index < allRounder){
+                                if(this.userTeamUIDataMap[index].data.Id &&
+                                    this.userTeamUIDataMap[index.data.Type != 'AllRounder']){
+                                    invalidElements.push(this.userTeamUIDataMap[index].uiElement);
+                                    invalidIndexes.push(index);
+                                }
+                            } else if(index < keeper){
+                                if(this.userTeamUIDataMap[index].data.Id &&
+                                    this.userTeamUIDataMap[index.data.Type != 'WicketKeeper']){
+                                    invalidElements.push(this.userTeamUIDataMap[index].uiElement);
+                                    invalidIndexes.push(index);
+                                }
+                            } else if(index < bowler){
+                                if(this.userTeamUIDataMap[index].data.Id &&
+                                    this.userTeamUIDataMap[index.data.Type != 'Bowler']){
+                                    invalidElements.push(this.userTeamUIDataMap[index].uiElement);
+                                    invalidIndexes.push(index);
+                                }
+                            }
+                            index +=1;
+                        }
+                        if(invalidElements.length){
+                            this.showError('Invalid Combination. Highlighted position are invalid for new combination');
+                            $.each(invalidElements, function(index, element){
+                                $(element).addClass('highlight-selection');
+                                setTimeout(function(){
+                                   $(element).removeClass('highlight-selection');
+                                }, 5000);
+
+                            });
+                            return false;
+
+                        }
                     }
                 }
                 else {
@@ -1314,7 +1390,7 @@ $(function () {
             },
             //add allrounder to UI based on composition
             addAllRounder: function (data) {
-            },
+            }
 
         }
     };
