@@ -1097,11 +1097,13 @@ $(function () {
                     this.bizHandle.userTeamCombination = newComposition;
                     this.setupComposition();
 
+                    //TODO: Anshul
                     //set the markup for selected element
                     //although this should not be necessary as we are refreshing the UI which resets all the
                     //templates in this(userTeam) block
                     $(this.selectedCompositionElement, this.rootElement).html('<b>' + $selectedElement.text() + '</b>');
 
+                    //TODO: Anshul
                     //there should not be any need to do this refresh if we are validating the composition correctely
                     //thus try to remove this method if the validateComposition method is corrected.
                     this.refreshUI();
