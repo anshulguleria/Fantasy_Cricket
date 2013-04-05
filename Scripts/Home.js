@@ -575,7 +575,9 @@ $(function () {
                 var index = CricManager.Search.findIndex(this.userTeamList, data, 'Id');
                 if (index != -1) {
                     this.userTeamList[index] = { Type: data.Type };
-                    //decrement the overseas players count in your team
+                    //decrement the overseas players count in your team if the removed player was
+                    //of type overseas
+                    if(data.Nationality != "Indian")
                     this.overseasPlayerCount--;
 
                     this.userTeamBalance = this.userTeamBalance + data.Price;
