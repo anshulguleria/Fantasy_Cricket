@@ -96,7 +96,7 @@ $(function () {
                 this.playerType = '';
                 var firstNameArray, lastNameArray;
                 firstNameArray = objectFilter(this.playerName, this.playerList, { property: 'FirstName' });
-                lastNameArray =  objectFilter(this.playerName, this.playerList, { property: 'LastName' });
+                lastNameArray = objectFilter(this.playerName, this.playerList, { property: 'LastName' });
 
                 var i = 0;
                 this.filterList = firstNameArray;
@@ -234,7 +234,7 @@ $(function () {
                     ////trigger click function on the ui Element and it will remove the element automatically 
                     ////and trigger the addEvent on userTeam
                     //$(uiElement).click();
-                    //$(uiElement).addClass('disabled choosen');
+                    //$(uiElement).addClass('disable choosen');
                 }
             },
 
@@ -264,6 +264,9 @@ $(function () {
                     var selectedTeam = $('a', this).data('value')
                     if (bizHandle.playerTeam != selectedTeam) {
                         bizHandle.playerTeam = selectedTeam;
+                        if (selectedTeam == "") {
+                            selectedTeam = "All Teams";
+                        }
                         $('#selectedTeam').html(selectedTeam);
                         bizHandle.changeFilter();
                     }
@@ -319,7 +322,7 @@ $(function () {
 
                 var $target = $(e.currentTarget).parents(this.playerListElement);
 
-                if ($target.is('.disabled,.chosen')) {
+                if ($target.is('.disable,.chosen')) {
                     return;
                 }
 
@@ -341,7 +344,7 @@ $(function () {
             //then we remove the element from UI
             removePlayer: function (uiElement) {
                 //rather than fade out we are keeping the player there but greying it and disabliing click
-                //$(uiElement).addClass('disabled choosen');
+                //$(uiElement).addClass('disable choosen');
                 //only get notified when add is successful on other side
                 console.log('remove player from player-pool succeded');
 
@@ -380,7 +383,7 @@ $(function () {
                 //    if (context.bizHandle.addPlayerToList(data)) {
                 //        //no need to render because data is already present there
                 //        //but we need to re-enable it
-                //        $(uiElement).removeClass('disabled choosen');
+                //        $(uiElement).removeClass('disable choosen');
 
                 //        //CricManager.TemplateService.renderTemplate($(uiElement, this), context.playerTemplate, data);
 
@@ -483,7 +486,7 @@ $(function () {
                 $('.countdown-timer', this.rootelement).each(function (index, value) {
                     //plugin to time
                     var dateTime = bizHandle.matchList[index].Deadline_Date + " " + bizHandle.matchList[index].Deadline_Time
-                    $(this).countdown({ until: new Date(dateTime)});
+                    $(this).countdown({ until: new Date(dateTime) });
                     //$(this).removeClass("hasCountdown");
 
                 });
@@ -553,19 +556,21 @@ $(function () {
     CricManager.UserTeam = {
         Biz: {
             viewHandle: 'CricManager.UserTeam.View',
+
             userDetail: {},
             userTeamList: [],
             userTeamName: '',
             userTeamBalance: 10000000,
             userTeamCaptain: '',
-            isUserTeamValidated:false,
+            userTeamTransfers: '',
+            userTeamCombination: 'C_4_2_1_4',
+
+            isUserTeamValidated: false,
 
             playersCount: 0,
             overseasPlayerCount: 0,
             allowedOverseasPlayers: 4,
 
-            userTeamTransfers: '',
-            userTeamCombination: 'C_4_2_1_4',
 
             seriesId: '18054817710736052',
             userId: '20001782967174406',
@@ -575,10 +580,10 @@ $(function () {
                 var index = CricManager.Search.findIndex(this.userTeamList, data, 'Id');
                 if (index != -1) {
                     this.userTeamList[index] = { Type: data.Type };
-                    //decrement the overseas players count in your team if the removed player was
-                    //of type overseas
-                    if(data.Nationality != "Indian")
-                    this.overseasPlayerCount--;
+                    //decrement the overseas players count in your team if the removed player is overseas
+                    if (data.Nationality != 'Indian') {
+                        this.overseasPlayerCount--;
+                    }
 
                     this.userTeamBalance = this.userTeamBalance + data.Price;
                     //return decides weather we remove it in the ui or not.
@@ -726,13 +731,12 @@ $(function () {
                 }
                 return false;
             },
-            ValidateUserTeamName:function(){
+            ValidateUserTeamName: function () {
 
 
                 var teamName = $("#txtTeamName").val();
-                if(teamName=="")
-                {
-                    teamName=$("#txtTeamName").text();
+                if (teamName == "") {
+                    teamName = $("#txtTeamName").text();
                     if (teamName != "") {
                         CricManager.UserTeam.Biz.isUserTeamValidated = true;
                         return;
@@ -754,7 +758,7 @@ $(function () {
 
                         if (msg == true) {
                             // if you don't want background color remove these following two lines
-                            CricManager.UserTeam.Biz.isUserTeamValidated=true;
+                            CricManager.UserTeam.Biz.isUserTeamValidated = true;
                         }
                         else {
                             // if you don't want background color remove these following two lines
@@ -781,6 +785,13 @@ $(function () {
                 //this.viewHandle.hideSaving();
                 this.viewHandle.hideLoader();
                 if (!data.Error) {
+                    this.userTeamList=data.Players;
+                    this.userTeamName=data.Name;
+                    this.userTeamBalance= data.Balance;
+                    this.userTeamCaptain= data.CaptainId;
+                    this.userTeamTransfers= data.TransfersLeft;
+                    this.userTeamCombination = data.Formation;
+                    CricManager.UserTeam.View.refreshUI();
                     //save is successcul show message here
                     //or call handle success messsage here
                 } else {
@@ -896,7 +907,7 @@ $(function () {
                 this.userTeamUIDataMap = CricManager.UIBizMap.createMapArray($(this.playerBlockElement, this.rootElement), this.bizHandle.userTeamList);
                 var $captainUIElement = this.findCaptain();
                 if ($captainUIElement) {
-                    $($captainUIElement).addClass('captain');
+                    $($captainUIElement).find('div.captain-div').addClass('captain');
                 }
                 this.setupComposition();
             },
@@ -990,7 +1001,7 @@ $(function () {
                 var batsman = 0, allRounder = 0, keeper = 0, bowler = 0, index = 0;
                 this.batsmanUIMap = []; this.allRounderUIMap = []; this.keeperUIMap = []; this.bowlerUIMap = [];
 
-                var counts = this.bizHandle.userTeamCombination ? this.bizHandle.userTeamCombination.split('_'): [];
+                var counts = this.bizHandle.userTeamCombination ? this.bizHandle.userTeamCombination.split('_') : [];
                 if (counts.length == 5) {
                     batsman = parseInt(counts[1]);
                     allRounder = batsman + parseInt(counts[2]);
@@ -1003,8 +1014,8 @@ $(function () {
                         this.userTeamUIDataMap[index].uiElement.addClass('batsman');
                         //that means earlier other player than batsman was there thus resetting its data
                         // and setting data.Type to 'Batsman'
-                        if(this.userTeamUIDataMap[index].data.Type != 'Batsman'){
-                            this.userTeamUIDataMap[index].data = {Type:'Batsman'};
+                        if (this.userTeamUIDataMap[index].data.Type != 'Batsman') {
+                            this.userTeamUIDataMap[index].data = { Type: 'Batsman' };
                         }
                         //else the player at that position is valid and will not be removed
 
@@ -1016,8 +1027,8 @@ $(function () {
                         }
                     } else if (index < allRounder) {
                         this.userTeamUIDataMap[index].uiElement.addClass('allRounder');
-                        if(this.userTeamUIDataMap[index].data.Type != 'AllRounder'){
-                            this.userTeamUIDataMap[index].data = {Type:'AllRounder'};
+                        if (this.userTeamUIDataMap[index].data.Type != 'AllRounder') {
+                            this.userTeamUIDataMap[index].data = { Type: 'AllRounder' };
                         }
                         //this.userTeamUIDataMap[index].data.Type = "AllRounder";
                         this.allRounderUIMap.push(this.userTeamUIDataMap[index]);
@@ -1026,8 +1037,8 @@ $(function () {
                         }
                     } else if (index < keeper) {
                         this.userTeamUIDataMap[index].uiElement.addClass('keeper');
-                        if(this.userTeamUIDataMap[index].data.Type != 'WicketKeeper'){
-                            this.userTeamUIDataMap[index].data = {Type:'WicketKeeper'};
+                        if (this.userTeamUIDataMap[index].data.Type != 'WicketKeeper') {
+                            this.userTeamUIDataMap[index].data = { Type: 'WicketKeeper' };
                         }
                         //this.userTeamUIDataMap[index].data.Type = "WicketKeeper";
                         this.keeperUIMap.push(this.userTeamUIDataMap[index]);
@@ -1036,8 +1047,8 @@ $(function () {
                         }
                     } else if (index < bowler) {
                         this.userTeamUIDataMap[index].uiElement.addClass('bowler');
-                        if(this.userTeamUIDataMap[index].data.Type != 'Bowler'){
-                            this.userTeamUIDataMap[index].data = {Type:'Bowler'};
+                        if (this.userTeamUIDataMap[index].data.Type != 'Bowler') {
+                            this.userTeamUIDataMap[index].data = { Type: 'Bowler' };
                         }
                         //this.userTeamUIDataMap[index].data.Type = "Bowler";
                         this.bowlerUIMap.push(this.userTeamUIDataMap[index]);
@@ -1073,7 +1084,7 @@ $(function () {
 
                 $(this.compositionElement, this.rootElement).on('click.userTeam', 'a', $.proxy(this.changeComposition, this));
                 $("#writeTeamName").on('click', function () {
-                    $("#yourTeamName").html('<input type="text" id="txtTeamName" class="translucentBG  customDropdown innerShadow span4" placeholder="Name your team" tabindex="1" style="border:1px solid #DF6B2B; height:30px; margin-bottom:0px !important;">');
+                    $("#yourTeamName").html('<input type="text" id="txtTeamName" class="translucentBG  customDropdown innerShadow span4" placeholder="your team name" tabindex="1" style="border:1px solid #DF6B2B; height:30px; margin-bottom:0px !important;">');
                 });
 
                 $('body').on('userLoginLogout.userTeam.evnt', $.proxy(this.handleUserLoginLogout, this));
@@ -1137,18 +1148,20 @@ $(function () {
             },
 
             /*validate composition validates on the basis of:
-                * split count of the composition
-                * batsman, allRounder, keeper, bowler count.
-                * position of batsman, allRounder, keeper, bowler as per new composition.
-            */
+             * split counts of the composition
+             * batsman, allRounder, keeper, bowler count.
+             * position of batsman, allRounder, keeper, bowler as per new composition.
+             */
             validateComposition: function (newComposition) {
                 var counts = newComposition.split('_');
                 var invalidElements = [], invalidIndexes = [];
-                var batsman = parseInt(count[1]), allRounder = parseInt(count[2]), keeper = parseInt(count[3]),
-                    bowler = parseInt(count[4]);
-                var total = batsman + allRounder + keeper + bowler;
+                var batsman = parseInt(counts[1])
+                var allRounder = batsman + parseInt(counts[2]);
+                var keeper = allRounder + parseInt(counts[3]);
+                var bowler = keeper + parseInt(counts[4]);
+                var total = parseInt(counts[1]) + parseInt(counts[2]) + parseInt(counts[3]) + parseInt(counts[4]);
 
-                var index =0;
+                var index = 0;
                 if (counts.length == 5) {
                     //check composition by count
                     if (this.batsmanCount > counts[1] || this.allRounderCount > counts[2] || this.keeperCount > counts[3] ||
@@ -1157,40 +1170,40 @@ $(function () {
                         return false;
                     } else {
                         //validate composition by positions
-                        while(index < total){
-                            if(index < batsman){
-                                if(this.userTeamUIDataMap[index].data.Id &&
-                                    this.userTeamUIDataMap[index].data.Type != 'Batsman'){
+                        while (index < total) {
+                            if (index < batsman) {
+                                if (this.userTeamUIDataMap[index].data.Id &&
+                                    this.userTeamUIDataMap[index].data.Type != 'Batsman') {
                                     invalidElements.push(this.userTeamUIDataMap[index].uiElement);
                                     invalidIndexes.push(index);
                                 }
-                            } else if(index < allRounder){
-                                if(this.userTeamUIDataMap[index].data.Id &&
-                                    this.userTeamUIDataMap[index.data.Type != 'AllRounder']){
+                            } else if (index < allRounder) {
+                                if (this.userTeamUIDataMap[index].data.Id &&
+                                    this.userTeamUIDataMap[index].data.Type != 'AllRounder') {
                                     invalidElements.push(this.userTeamUIDataMap[index].uiElement);
                                     invalidIndexes.push(index);
                                 }
-                            } else if(index < keeper){
-                                if(this.userTeamUIDataMap[index].data.Id &&
-                                    this.userTeamUIDataMap[index.data.Type != 'WicketKeeper']){
+                            } else if (index < keeper) {
+                                if (this.userTeamUIDataMap[index].data.Id &&
+                                    this.userTeamUIDataMap[index].data.Type != 'WicketKeeper') {
                                     invalidElements.push(this.userTeamUIDataMap[index].uiElement);
                                     invalidIndexes.push(index);
                                 }
-                            } else if(index < bowler){
-                                if(this.userTeamUIDataMap[index].data.Id &&
-                                    this.userTeamUIDataMap[index.data.Type != 'Bowler']){
+                            } else if (index < bowler) {
+                                if (this.userTeamUIDataMap[index].data.Id &&
+                                    this.userTeamUIDataMap[index].data.Type != 'Bowler') {
                                     invalidElements.push(this.userTeamUIDataMap[index].uiElement);
                                     invalidIndexes.push(index);
                                 }
                             }
-                            index +=1;
+                            index += 1;
                         }
-                        if(invalidElements.length){
+                        if (invalidElements.length) {
                             this.showError('Invalid Combination. Highlighted position are invalid for new combination');
-                            $.each(invalidElements, function(index, element){
+                            $.each(invalidElements, function (index, element) {
                                 $(element).addClass('highlight-selection');
-                                setTimeout(function(){
-                                   $(element).removeClass('highlight-selection');
+                                setTimeout(function () {
+                                    $(element).removeClass('highlight-selection');
                                 }, 5000);
 
                             });
@@ -1228,8 +1241,8 @@ $(function () {
                 //getting the list element of the clicked element
                 var $selectedElement = $(e.currentTarget).parents(this.playerBlockElement);
 
-                $(this.playerBlockElement, this.rootElement).removeClass('captain');
-                $selectedElement.addClass('captain');
+                $(this.playerBlockElement, this.rootElement).find('div.captain-div').removeClass('captain');
+                $($selectedElement).find('div.captain-div').addClass('captain');
 
                 var data = CricManager.UIBizMap.getData(this.userTeamUIDataMap, $selectedElement)[0];
                 this.bizHandle.userTeamCaptain = data.data.Id;
@@ -1246,8 +1259,9 @@ $(function () {
             removePlayer: function (e) {
                 //var context = CricManager.UserTeam.View;
                 var $selectedElement = $(e.currentTarget).parents(this.playerBlockElement);
-                if ($selectedElement.is('.captain')) {
-                    $selectedElement.removeClass('captain');
+                var $captainElement = $($selectedElement).find('div.captain-div');
+                if ($captainElement.is('.captain')) {
+                    $captainElement.removeClass('captain');
                     this.bizHandle.userTeamCaptain = null;
                 }
 
@@ -1397,6 +1411,7 @@ $(function () {
                 callbackFailure && callbackFailure(data);
                 console.log('failed adding to user team');
 
+
             },
             //INFO: add batsman to UI based on team composition
             addBatsman: function (data) {
@@ -1445,6 +1460,114 @@ $(function () {
             renderMatches: function () {
                 CricManager.TemplateService.renderTemplate(this.rootElement, this.templateName, this.bizHandle.teamList);
             }
+        }
+    };
+
+    CricManager.LeaderBoard = {
+        Biz: {
+            viewHandle: 'CricManager.LeaderBoard.View',
+            seriesId: '',
+            isMiniLeague:'',
+            userId: '20001782967174406',
+            leaderBoardData: {},
+            leaderBoardList: [],
+            init: function (seriesId,isMiniLeague) {
+                this.viewHandle = CricManager.VariableResolve.resolve(this.viewHandle);
+                if (this.seriesId != seriesId) {
+                    this.seriesId = seriesId;
+                    this.isMiniLeague = isMiniLeague;
+                    this.getLeaderBoard(seriesId,isMiniLeague);
+                } else {
+                    this.leaderBoardXHRSuccess(this.leaderBoardData);
+                }
+
+            },
+            /**
+             * Gets the leaderboard list data
+             */
+            getLeaderBoard: function (seriesId,isMiniLeague) {
+                this.viewHandle.showLoader();
+                CricManager.HttpClient.get('/Services/CricManagerService.svc/LeaderBoard/' + seriesId+"/"+isMiniLeague, this.leaderBoardXHRSuccess, this.leaderBoardXHRFailure, this);
+            },
+            /**
+             * Handles the success of scoreCard retrieve call
+             */
+            leaderBoardXHRSuccess: function (data) {
+                this.leaderBoardData = data;
+                this.leaderBoardList = data.leaderBoardList;
+                this.viewHandle.renderLeaderBoard();
+            },
+            /**
+             * Handles the error in the call of scoreCard
+             */
+            leaderBoardXHRFailure: function (err) {
+                this.viewHandle.hideLoader();
+                this.viewHandle.showError("Unable to get leaderboard");
+            }
+        },
+        View: {
+            bizHandle: 'CricManager.LeaderBoard.Biz',
+            rootElement: '#scoreModal',
+            loaderElement: '.leaderBoardLoader',
+            leaderBoardTriggerElement: '#showLeaderBoard',
+            templateName: 'leaderboard-data',
+            //this property denotes that the data is fethed for the modal or not.
+            //can be used to not call the service every time and only show the modal
+            isReady: false,
+            /**
+             * this is the first function to be called to start the processing.
+
+             */
+            ready: function (ev) {
+                var seriesId = $(ev.currentTarget).data('id');
+                var isMiniLeague = $(ev.currentTarget).data('isminileague');
+                this.bizHandle = CricManager.VariableResolve.resolve(this.bizHandle);
+                if (!this.isReady) {
+                    this.bizHandle.init(seriesId,isMiniLeague);
+                }
+            },
+            /**
+             * Render the leaderboard template.
+             * This function is also not called each time the leaderboard is loaded. It is to be used only when we need to re-render
+             * the leaderboard template.
+             */
+            renderLeaderBoard: function () {
+
+                CricManager.TemplateService.renderTemplate(this.rootElement, this.templateName, this.bizHandle.leaderBoardList);
+                this.removeBindings();
+                this.setUpBindings();
+                this.isReady = true;
+            },
+            showError: function (msg) {
+                if (msg) {
+                    window.showMessage(msg);
+                }
+                $(this.rootElement).modal('hide');
+            },
+
+            showLoader: function () {
+                $(this.loaderElement, this.rootElement).show();
+            },
+            hideLoader: function () {
+                $(this.loaderElement, this.rootElement).fadeOut();
+            },
+
+            setUpBindings: function () {
+                //$(this.rootElement).on('click.leaderboard.evnt', this.leaderBoardTriggerElement, $.proxy(this.showLeaderBoard, this));
+                //$(this.rootElement).on('shown.leaderboard.evnt', $.proxy(this.showLeaderBoard, this));
+            },
+            removeBindings: function () {
+                //$(this.rootElement).off();
+            },
+
+            //showLeaderBoard: function () {
+            //    if (!this.isReady) {
+            //        this.ready();
+            //    }
+
+            //    $(this.rootElement).modal('show');
+
+            //},
         }
     };
 
@@ -1665,7 +1788,7 @@ $(function () {
 
         CricManager.UserTeam.View.ready();
 
-
+        $('body').on('click', '.leaderBoardTrigger', $.proxy(CricManager.LeaderBoard.View.ready, CricManager.LeaderBoard.View));
     })
 
 }());
