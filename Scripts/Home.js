@@ -100,7 +100,7 @@ $(function () {
 
                 var i = 0;
                 this.filterList = firstNameArray;
-                for (i = 0 ; i < lastNameArray.length; i++) {
+                for (i = 0; i < lastNameArray.length; i++) {
                     if (CricManager.Search.findIndex(firstNameArray, lastNameArray[i], 'Id') == -1) {
                         this.filterList.push(lastNameArray[i]);
                     }
@@ -169,7 +169,12 @@ $(function () {
             },
 
             showError: function (msg) {
-                $(this.rootElement).html('<tr class="alert alert-error"><td></td><td><strong>Error!!</strong>Error fetching player list.</td><td></td><td></td><td></td></tr>');
+                //TODO: Show the error of unable to fetch the playerlist.
+                //$(this.rootElement).html('<tr class="alert alert-error"><td></td><td><strong>Error!!</strong>Error fetching player list.</td><td></td><td></td><td></td></tr>');
+                if (msg) {
+                    window.showMessage(msg);
+                    console && console.log("Err: " + msg);
+                }
             },
 
             hideError: function () {
@@ -240,16 +245,25 @@ $(function () {
 
 
             removeBindings: function () {
+                //it turns off the mouseleave event(for popover), 
                 $(this.rootElement).off('.playerPool');
                 $('#rowPlayerTypeNav ul li.player-filters').off();
                 $('#search_text').off();
                 $('.team-filter').off();
                 $('.sort-param').off();
+
+
                 $('body').off('.playerPool');
             },
 
             setUpBindings: function () {
                 var bizHandle = this.bizHandle;
+
+                //destroying the popover as it is created every time the error is to be shown
+                $(this.rootElement).on('mouseleave.playerPool', this.playerListElement, $.proxy(function () {
+                    $(this.rootElement).popover('destroy');
+                }, this));
+
                 //playertype filter
                 $('#rowPlayerTypeNav ul li.player-filters').on('click', function () {
                     if (bizHandle.playerType != $(this).data('category')) {
@@ -301,7 +315,6 @@ $(function () {
 
                 //we are adding and removing players on the ui only ..... but a better way would be to do it from the service 
                 //so that no one can change the selection by altering the script.
-                //$(this.choosePlayerElement, this.rootElement).on('click.playerPool', $.proxy(this.choosePlayer, this));
                 $(this.rootElement).on('click.playerPool', this.choosePlayerElement, $.proxy(this.choosePlayer, this));
                 $(this.rootElement).on('addPlayer.playerPool.evnt', this.addPlayer);
 
@@ -342,7 +355,7 @@ $(function () {
             },
             //called when the add on the other side is successful as a confirmation
             //then we remove the element from UI
-            removePlayer: function (uiElement) {
+            removePlayer: function (data, uiElement) {
                 //rather than fade out we are keeping the player there but greying it and disabliing click
                 //$(uiElement).addClass('disable choosen');
                 //only get notified when add is successful on other side
@@ -350,7 +363,7 @@ $(function () {
 
             },
             //called when adding fails on the other side
-            removeFailure: function (data) {
+            removeFailure: function (data, uiElement) {
                 //revert the remove from the list
                 console.log('reverting the player changes in palyerTeam due to failure to add to the userTeam');
                 var context = CricManager.Players.View;
@@ -358,6 +371,23 @@ $(function () {
                     console.log('revert to player-pool also failed');
                 }
 
+                //assuming that the only reason player can't be added on the user team is because the 
+                //user team dosen't have space for this category of player.
+
+                //INFO: no operation can be done on uiElement because the uiElement is already destroyed and new element is created
+                context.showChooseError("Can't choose this player as your dosen't have space for this player category(" + data.Type + ").", uiElement);
+
+            },
+            showChooseError: function (msg, uiElement) {
+                //TODO: show popover error msg here.
+                $(this.rootElement).popover({
+                    content: msg,
+                    title: 'Error:',
+                    trigger: 'manual'
+                });
+                $(this.rootElement).popover('show');
+
+                console.log('%cErr: ' + msg, 'color: red');
             },
 
             addPlayer: function (e, data, callbackSuccess, callbackFailure, callbackValue) {
@@ -373,7 +403,6 @@ $(function () {
                 callbackFailure(data);
                 console.log('failed adding to player pool');
                 //refreshing of list will be done by the Biz
-
 
 
                 //});
@@ -393,7 +422,6 @@ $(function () {
 
 
                 //}
-
 
 
             },
@@ -695,7 +723,6 @@ $(function () {
             },
 
 
-
             saveTeam: function () {
                 this.ValidateUserTeamName();
                 if (this.isUserTeamValidated) {
@@ -778,18 +805,16 @@ $(function () {
                 });
 
 
-
-
             },
             saveTeamXHRSuccess: function (data) {
                 //this.viewHandle.hideSaving();
                 this.viewHandle.hideLoader();
                 if (!data.Error) {
-                    this.userTeamList=data.Players;
-                    this.userTeamName=data.Name;
-                    this.userTeamBalance= data.Balance;
-                    this.userTeamCaptain= data.CaptainId;
-                    this.userTeamTransfers= data.TransfersLeft;
+                    this.userTeamList = data.Players;
+                    this.userTeamName = data.Name;
+                    this.userTeamBalance = data.Balance;
+                    this.userTeamCaptain = data.CaptainId;
+                    this.userTeamTransfers = data.TransfersLeft;
                     this.userTeamCombination = data.Formation;
                     CricManager.UserTeam.View.refreshUI();
                     //save is successcul show message here
@@ -990,7 +1015,6 @@ $(function () {
             },
 
 
-
             /**
              * This method is called each time the user changes the composition from the dropdown.
              * the context(this) of this function is the userTeam object not the event element.
@@ -999,7 +1023,10 @@ $(function () {
             setupComposition: function () {
                 //TODO: need to change this method if we want to keep the order as any order
                 var batsman = 0, allRounder = 0, keeper = 0, bowler = 0, index = 0;
-                this.batsmanUIMap = []; this.allRounderUIMap = []; this.keeperUIMap = []; this.bowlerUIMap = [];
+                this.batsmanUIMap = [];
+                this.allRounderUIMap = [];
+                this.keeperUIMap = [];
+                this.bowlerUIMap = [];
 
                 var counts = this.bizHandle.userTeamCombination ? this.bizHandle.userTeamCombination.split('_') : [];
                 if (counts.length == 5) {
@@ -1008,7 +1035,9 @@ $(function () {
                     keeper = allRounder + parseInt(counts[3]);
                     bowler = keeper + parseInt(counts[4]);
                 }
-                this.batsmanCount = 0; this.allRounderCount = 0; this.keeperCount = 0, this.bowlerCount = 0;
+                this.batsmanCount = 0;
+                this.allRounderCount = 0;
+                this.keeperCount = 0, this.bowlerCount = 0;
                 while (index < this.userTeamUIDataMap.length) {
                     if (index < batsman) {
                         this.userTeamUIDataMap[index].uiElement.addClass('batsman');
@@ -1084,7 +1113,7 @@ $(function () {
 
                 $(this.compositionElement, this.rootElement).on('click.userTeam', 'a', $.proxy(this.changeComposition, this));
                 $("#writeTeamName").on('click', function () {
-                    $("#yourTeamName").html('<input type="text" id="txtTeamName" class="translucentBG  customDropdown innerShadow span4" placeholder="your team name" tabindex="1" style="border:1px solid #DF6B2B; height:30px; margin-bottom:0px !important;">');
+                    $("#divYourTeamName").html('<input type="text" id="txtTeamName" class="translucentBG  customDropdown innerShadow span4" placeholder="your team name" tabindex="1" style="border:1px solid #DF6B2B; height:30px; margin-bottom:0px !important;"><a href="javaScript:void(0);" class="" id="writeTeamName"><i class="icon-pencil icon-white"></i></a>');
                 });
 
                 $('body').on('userLoginLogout.userTeam.evnt', $.proxy(this.handleUserLoginLogout, this));
@@ -1142,7 +1171,6 @@ $(function () {
                 } else {
                     console.log('roll backing composition ' + newComposition);
                 }
-
 
 
             },
@@ -1295,8 +1323,6 @@ $(function () {
                 CricManager.TemplateService.renderTemplate(uiElement, context.teamPlayerTemplate, { Type: data.Type });
 
 
-
-
                 context.managePlayerCount(data, 'remove');
             },
             revertRemovePlayer: function (data) {
@@ -1384,7 +1410,7 @@ $(function () {
                             $targetElement.removeClass('highlight-selection');
                         }, 2000);
                         //call success callback to ensure successful adding
-                        callbackSuccess && callbackSuccess(callbackValue);
+                        callbackSuccess && callbackSuccess(data, callbackValue);
                         console.log('player added to user team');
 
                         this.managePlayerCount(data, 'add');
@@ -1408,7 +1434,7 @@ $(function () {
                     }
                 }
 
-                callbackFailure && callbackFailure(data);
+                callbackFailure && callbackFailure(data, callbackValue);
                 console.log('failed adding to user team');
 
 
@@ -1467,16 +1493,16 @@ $(function () {
         Biz: {
             viewHandle: 'CricManager.LeaderBoard.View',
             seriesId: '',
-            isMiniLeague:'',
+            isMiniLeague: '',
             userId: '20001782967174406',
             leaderBoardData: {},
             leaderBoardList: [],
-            init: function (seriesId,isMiniLeague) {
+            init: function (seriesId, isMiniLeague) {
                 this.viewHandle = CricManager.VariableResolve.resolve(this.viewHandle);
                 if (this.seriesId != seriesId) {
                     this.seriesId = seriesId;
                     this.isMiniLeague = isMiniLeague;
-                    this.getLeaderBoard(seriesId,isMiniLeague);
+                    this.getLeaderBoard(seriesId, isMiniLeague);
                 } else {
                     this.leaderBoardXHRSuccess(this.leaderBoardData);
                 }
@@ -1485,9 +1511,9 @@ $(function () {
             /**
              * Gets the leaderboard list data
              */
-            getLeaderBoard: function (seriesId,isMiniLeague) {
+            getLeaderBoard: function (seriesId, isMiniLeague) {
                 this.viewHandle.showLoader();
-                CricManager.HttpClient.get('/Services/CricManagerService.svc/LeaderBoard/' + seriesId+"/"+isMiniLeague, this.leaderBoardXHRSuccess, this.leaderBoardXHRFailure, this);
+                CricManager.HttpClient.get('/Services/CricManagerService.svc/LeaderBoard/' + seriesId + "/" + isMiniLeague, this.leaderBoardXHRSuccess, this.leaderBoardXHRFailure, this);
             },
             /**
              * Handles the success of scoreCard retrieve call
@@ -1523,7 +1549,7 @@ $(function () {
                 var isMiniLeague = $(ev.currentTarget).data('isminileague');
                 this.bizHandle = CricManager.VariableResolve.resolve(this.bizHandle);
                 if (!this.isReady) {
-                    this.bizHandle.init(seriesId,isMiniLeague);
+                    this.bizHandle.init(seriesId, isMiniLeague);
                 }
             },
             /**
@@ -1558,7 +1584,7 @@ $(function () {
             },
             removeBindings: function () {
                 //$(this.rootElement).off();
-            },
+            }
 
             //showLeaderBoard: function () {
             //    if (!this.isReady) {
@@ -1773,7 +1799,8 @@ $(function () {
             { ShortTeamName: 'PWI', FullTeamName: 'PuneWarriorsIndia' },
             { ShortTeamName: 'RCB', FullTeamName: 'RoyalChallengersBangalore' },
             { ShortTeamName: 'RR ', FullTeamName: 'RajasthanRoyals' },
-            { ShortTeamName: 'SH', FullTeamName: 'SunrisersHyderbad' }]
+            { ShortTeamName: 'SH', FullTeamName: 'SunrisersHyderbad' }
+        ]
     };
 
     $(document).ready(function () {
