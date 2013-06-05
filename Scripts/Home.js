@@ -1356,7 +1356,10 @@ $(function () {
 
 
             removeAllPlayers: function () {
-
+                var elements = $(this.playerBlockElement, this.rootelement);
+                $.each(elements, $.proxy(function(idx, val){
+                    this.removePlayerHandler($(val), false)
+                }, this))
             },
             //remove the player from list
             //context is set to this using jQuery.proxy
