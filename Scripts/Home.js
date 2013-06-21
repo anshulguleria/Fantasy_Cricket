@@ -20,7 +20,7 @@ $(function () {
             playerTeam: '',
             playerName: '',
 
-            seriesId: '18054817710736052',
+            seriesId: '27736440632901917',
             addPlayerToList: function (data) {
                 //check so that no repeated players may enterteamLoader
                 var index = CricManager.Search.findIndex(this.playerList, data, 'Id');
@@ -474,7 +474,7 @@ $(function () {
         Biz: {
             viewHandle: 'CricManager.Schedule.View',
             matchList: [],
-            seriesId: '18054817710736052',
+            seriesId: '27736440632901917',
             matchCount: 4,
             init: function () {
                 this.viewHandle = CricManager.VariableResolve.resolve(this.viewHandle);
@@ -578,7 +578,7 @@ $(function () {
     CricManager.Teams = {
         Biz: {
             viewHandle: 'CricManager.Teams.View',
-            seriesId: '18054817710736052',
+            seriesId: '27736440632901917',
             teamList: [],
             init: function () {
                 this.viewHandle = CricManager.VariableResolve.resolve(this.viewHandle);
@@ -625,7 +625,7 @@ $(function () {
             allowedOverseasPlayers: 4,
 
 
-            seriesId: '18054817710736052',
+            seriesId: '27736440632901917',
             userId: '20001782967174406',
 
 
@@ -734,6 +734,11 @@ $(function () {
                 if (!data.Error) {
                     this.userDetail = data;
                     this.userTeamBalance = data.Balance;
+                    this.overseasPlayerCount = 0;
+                    $.each(data.Players, $.proxy(function (index, val) {
+                        if (val.Nationality != "Indian")
+                            this.overseasPlayerCount++;
+                    }, this));
                     this.userTeamName = data.Name;
                     this.userTeamCaptain = data.CaptainId
                     this.userTeamTransfers = data.TransfersLeft;
@@ -754,6 +759,11 @@ $(function () {
             },
 
             createTeam: function () {
+
+                this.viewHandle.showLoader();
+                this.createMyTeam();
+                this.viewHandle.renderUserTeam();
+                this.viewHandle.hideLoader();
 
             },
             createTeamXHRSuccess: function (data) {
@@ -782,6 +792,22 @@ $(function () {
                         //this.viewHandle.showError("Select a Captain");
                         console.log('Save team failed.');
                     }
+                }
+            },
+            saveTeamOnLoginFlow: function () {
+                this.ValidateUserTeamName();
+                console.log("Save Team On Login Flow Called OutSide outer If");
+                if (CricManager.UserTeam.Biz.isUserTeamValidated) {
+                    console.log("Save Team On Login Flow Called inside outer If");
+                    var totalPlayers = this.viewHandle.batsmanCount + this.viewHandle.allRounderCount + this.viewHandle.keeperCount + this.viewHandle.bowlerCount;
+                    if (totalPlayers == 11 && this.userTeamCaptain) {
+                        console.log("Save Team On Login Flow Called inside inside if");
+                        var saveRQ = JSON.stringify(this.createSaveRequest());
+                        this.viewHandle.showLoader();
+                        CricManager.HttpClient.post('/Services/UserService.svc/SaveTeam', this.saveTeamXHRSuccess, this.saveTeamXHRFailure, saveRQ, this);
+
+                    }
+
                 }
             },
             validateSaveRQ: function () {
@@ -852,11 +878,16 @@ $(function () {
                 //this.viewHandle.hideSaving();
                 this.viewHandle.hideLoader();
                 if (!data.Error) {
-                    this.userTeamList=data.Players;
-                    this.userTeamName=data.Name;
-                    this.userTeamBalance= data.Balance;
-                    this.userTeamCaptain= data.CaptainId;
-                    this.userTeamTransfers= data.TransfersLeft;
+                    this.userTeamList = data.Players;
+                    this.userTeamName = data.Name;
+                    this.userTeamBalance = data.Balance;
+                    this.overseasPlayerCount = 0;
+                    $.each(data.Players, $.proxy(function (index, val) {
+                        if (val.Nationality != "Indian")
+                            this.overseasPlayerCount++;
+                    }, this));
+                    this.userTeamCaptain = data.CaptainId;
+                    this.userTeamTransfers = data.TransfersLeft;
                     this.userTeamCombination = data.Formation;
                     CricManager.UserTeam.View.refreshUI();
                     //save is successcul show message here
@@ -915,7 +946,76 @@ $(function () {
                 }
 
                 this.userTeamList = list;
-            }
+                //this.userTeamBalance = 1000000;
+            },
+
+            getRandomArrayElements: function (arr, count) {
+                var randoms = [], clone = arr.slice(0);
+                for (var i = 0, index; i < count; ++i) {
+                    index = Math.floor(Math.random() * clone.length);
+                    randoms.push(clone[index]);
+                    clone[index] = clone.pop();
+                }
+                return randoms;
+
+            },
+
+            createMyTeam: function () {
+                var i = 0;
+                var list = [];
+                var batsman = 0, allRounder = 0, keeper = 0, bowler = 0;
+                var rnd = 0;
+                var obj = {};
+                var price = 0;
+                var overSeasPlayerCnt = 0;
+                var counts = this.userTeamCombination.split('_');
+                if (counts.length == 5) {
+                    batsman = parseInt(counts[1]);
+                    allRounder = parseInt(counts[2]);
+                    keeper = parseInt(counts[3]);
+                    bowler = parseInt(counts[4]);
+                    var total = batsman + allRounder + keeper + bowler;
+                    var batsmanList = objectFilter("BatsMan", CricManager.Players.Biz.playerList, { property: 'Type' });
+                    var allRounderList = objectFilter("AllRounder", CricManager.Players.Biz.playerList, { property: 'Type' });
+                    var wicketKepperList = objectFilter("WicketKeeper", CricManager.Players.Biz.playerList, { property: 'Type' });
+                    var bowlerList = objectFilter("Bowler", CricManager.Players.Biz.playerList, { property: 'Type' });
+                    $.each(this.getRandomArrayElements(batsmanList, batsman), function (inex, val) {
+                        list.push(val);
+                        if (val.Nationality != 'Indian')
+                            overSeasPlayerCnt += 1;
+                        price += val.Price;
+                    });
+                    $.each(this.getRandomArrayElements(allRounderList, allRounder), function (inex, val) {
+                        list.push(val);
+                        if (val.Nationality != 'Indian')
+                            overSeasPlayerCnt += 1;
+                        price += val.Price;
+                    });
+                    $.each(this.getRandomArrayElements(wicketKepperList, keeper), function (inex, val) {
+                        list.push(val);
+                        if (val.Nationality != 'Indian')
+                            overSeasPlayerCnt += 1;
+                        price += val.Price;
+                    });
+                    $.each(this.getRandomArrayElements(bowlerList, bowler), function (inex, val) {
+                        list.push(val);
+                        if (val.Nationality != 'Indian')
+                            overSeasPlayerCnt += 1;
+                        price += val.Price;
+                    });
+
+
+                    if (price > 10000000 || overSeasPlayerCnt > 4) {
+
+                        this.createMyTeam();
+                    }
+                    else {
+                        this.userTeamBalance = 10000000 - price;
+                        this.userTeamList = list;
+                        this.overseasPlayerCount = overSeasPlayerCnt;
+                    }
+                }
+            },
         },
         View: {
             bizHandle: 'CricManager.UserTeam.Biz',
@@ -941,7 +1041,8 @@ $(function () {
             saveElement: '.saveteam',
             compositionElement: '.compositionSelector',
             selectedCompositionElement: '.selectedComposition',
-
+            createTeamElement: '.createmyteam',
+            clearTeamElement: '.clearTeam',
             userTeamUIDataMap: [],
             batsmanUIMap: [],
             batsmanCount: 0,
@@ -1029,6 +1130,7 @@ $(function () {
 
             ready: function () {
                 this.bizHandle = CricManager.VariableResolve.resolve(this.bizHandle);
+                this.bizHandle.saveTeamOnLoginFlow();
                 this.bizHandle.init();
 
             },
@@ -1148,10 +1250,12 @@ $(function () {
                 $()
                 $(this.rootElement).on('addPlayer.userTeam.evnt', $.proxy(this.handleChoosePlayer, this));
                 $(this.saveElement, this.rootElement).on('click.userTeam', $.proxy(this.saveTeam, this));
+                $(this.createTeamElement, this.rootElement).on('click.userTeam', $.proxy(this.createTeam, this));
+                $(this.clearTeamElement, this.rootElement).on('click.userTeam', $.proxy(this.clearTeam, this));
 
                 $(this.compositionElement, this.rootElement).on('click.userTeam', 'a', $.proxy(this.changeComposition, this));
                 $("#writeTeamName").on('click', function () {
-                    $("#divYourTeamName").html('<input type="text" id="txtTeamName" class="translucentBG  customDropdown innerShadow span4" placeholder="your team name" style="border:1px solid #DF6B2B; height:30px; margin-bottom:0px !important;"><a href="javaScript:void(0);" class="" id="writeTeamName"><i class="icon-pencil icon-white"></i></a>');
+                    $("#divYourTeamName").html('<input type="text" id="txtTeamName" class="translucentBG  customDropdown innerShadow span4" placeholder="your team name" style="border:1px solid #DF6B2B; height:30px; margin-bottom:0px !important;"><a href="javaScript:void(0);" class="" id="writeTeamName"><i class="icon-pencil icon-white"></i></a><a href="#" class=" randomTeam pull-right createmyteam" title="Click to get a random team">&nbsp;&nbsp;&nbsp;&nbsp;</a>');
                 });
 
                 $('body').on('userLoginLogout.userTeam.evnt', $.proxy(this.handleUserLoginLogout, this));
@@ -1194,18 +1298,16 @@ $(function () {
                     var removedData = [];
                     //count was valid but the positions are not valid for some players
                     // thus removing the players and then adding after changing the ui
-                    if(validateResponse.type == 'Position'){
+                    if (validateResponse.type == 'Position') {
 
-                        $.each(validateResponse.invalidElements, $.proxy(function(index, ele){
+                        $.each(validateResponse.invalidElements, $.proxy(function (index, ele) {
                             var removeResponse = this.removePlayerHandler(ele, true);
-                            if(removeResponse.status == true){
+                            if (removeResponse.status == true) {
                                 removedData.push(removeResponse.data);
                             }
 
                         }, this));
-                    }
-
-                    this.bizHandle.userTeamCombination = newComposition;
+                    } this.bizHandle.userTeamCombination = newComposition;
                     this.setupComposition();
 
                     //TODO: Anshul
@@ -1214,15 +1316,16 @@ $(function () {
                     //templates in this(userTeam) block
                     $(this.selectedCompositionElement, this.rootElement).html('<b>' + $selectedElement.text() + '</b>');
 
-
+                    //TODO: Anshul
+                    //there should not be any need to do this refresh if we are validating the composition correctely
+                    //thus try to remove this method if the validateComposition method is corrected.
                     this.refreshUI();
 
-                    if(removedData.length){
-                        $.each(removedData, $.proxy(function(index, data){
+                    if (removedData.length) {
+                        $.each(removedData, $.proxy(function (index, data) {
                             this.addPlayer(data);
                         }, this));
                     }
-
                     console.log('changed composition to ' + newComposition);
 
                 } else {
@@ -1234,12 +1337,12 @@ $(function () {
             },
 
             /**
-             * validate composition validates on the basis of:
-             * split counts of the composition
-             * batsman, allRounder, keeper, bowler count.
-             * position of batsman, allRounder, keeper, bowler as per new composition.
-             * returns an object containing the status which determines the validation status
-             */
+                * validate composition validates on the basis of:
+                * split counts of the composition
+                * batsman, allRounder, keeper, bowler count.
+                * position of batsman, allRounder, keeper, bowler as per new composition.
+                * returns an object containing the status which determines the validation status
+                */
             validateComposition: function (newComposition) {
                 var counts = newComposition.split('_');
                 var invalidElements = [], invalidIndexes = [];
@@ -1291,14 +1394,14 @@ $(function () {
                             index += 1;
                         }
                         if (invalidElements.length) {
-                            this.showError('Combination is invalid. Players at the highlighted positions need to be replaced.');
-                            $.each(invalidElements, function (index, element) {
-                                $(element).addClass('highlight-selection');
-                                setTimeout(function () {
-                                    $(element).removeClass('highlight-selection');
-                                }, 5000);
+                            //this.showError('Combination is invalid. Players at the highlighted positions need to be replaced.');
+                            //$.each(invalidElements, function (index, element) {
+                            //    $(element).addClass('highlight-selection');
+                            //    setTimeout(function () {
+                            //        $(element).removeClass('highlight-selection');
+                            //    }, 5000);
 
-                            });
+                            //});
                             return {
                                 status: true,
                                 msg: 'Combination is invalid. Players at the highlighted positions need to be replaced.',
@@ -1341,7 +1444,18 @@ $(function () {
 
 
             },
+            createTeam: function () {
+                //this.clearTeam();
+                //CricManager.Players.View.refreshUI(CricManager.Players.Biz.filterList);
+                // CricManager.Players.View.refreshUI(CricManager.Players.Biz.filterList);
+                this.removeAllPlayers();
+                this.bizHandle.createTeam();
 
+            },
+            clearTeam: function () {
+                this.bizHandle.createEmptyTeam();
+
+            },
             setCaptain: function (e) {
                 //getting the list element of the clicked element
                 var $selectedElement = $(e.currentTarget).parents(this.playerBlockElement);
@@ -1357,19 +1471,20 @@ $(function () {
 
             removeAllPlayers: function () {
                 var elements = $(this.playerBlockElement, this.rootelement);
-                $.each(elements, $.proxy(function(idx, val){
+                $.each(elements, $.proxy(function (idx, val) {
                     this.removePlayerHandler($(val), false)
                 }, this))
             },
             //remove the player from list
-            //context is set to this using jQuery.proxy
+            //context is set to this using jQuery.proxy 
+            //assuming parent element of clicked element is our target element
             removePlayer: function (e) {
                 //var context = CricManager.UserTeam.View;
                 var $selectedElement = $(e.currentTarget).parents(this.playerBlockElement);
                 this.removePlayerHandler($selectedElement);
 
             },
-            removePlayerHandler: function($selectedElement, isInternal){
+            removePlayerHandler: function ($selectedElement, isInternal) {
                 var $captainElement = $($selectedElement).find('div.captain-div');
                 if ($captainElement.is('.captain')) {
                     $captainElement.removeClass('captain');
@@ -1384,7 +1499,7 @@ $(function () {
 
                     console.log('player remove from userTeam initiated....');
                     //call the playerpool add player
-                    if(!isInternal){
+                    if (!isInternal) {
                         var playerListRootElement = CricManager.Players.View.rootElement;
                         $(playerListRootElement).trigger('addPlayer', [data, this.removePlayerFromUI, this.revertRemovePlayer, $selectedElement]);
                         this.renderBalance(this.bizHandle.userTeamBalance);
@@ -1562,7 +1677,7 @@ $(function () {
     CricManager.Matches = {
         Biz: {
             viewHandle: 'CricManager.Matches.View',
-            seriesId: '18054817710736052',
+            seriesId: '27736440632901917',
             userId: '20001782967174406',
             matchesList: [],
             init: function () {
@@ -1596,31 +1711,31 @@ $(function () {
         Biz: {
             viewHandle: 'CricManager.LeaderBoard.View',
             seriesId: '',
-            isMiniLeague:'',
+            isMiniLeague: '',
             userId: '20001782967174406',
             leaderBoardData: {},
             leaderBoardList: [],
-            init: function (seriesId,isMiniLeague) {
+            init: function (seriesId, isMiniLeague) {
                 this.viewHandle = CricManager.VariableResolve.resolve(this.viewHandle);
                 if (this.seriesId != seriesId) {
                     this.seriesId = seriesId;
                     this.isMiniLeague = isMiniLeague;
-                    this.getLeaderBoard(seriesId,isMiniLeague);
+                    this.getLeaderBoard(seriesId, isMiniLeague);
                 } else {
                     this.leaderBoardXHRSuccess(this.leaderBoardData);
                 }
 
             },
             /**
-             * Gets the leaderboard list data
-             */
-            getLeaderBoard: function (seriesId,isMiniLeague) {
+            * Gets the leaderboard list data
+            */
+            getLeaderBoard: function (seriesId, isMiniLeague) {
                 this.viewHandle.showLoader();
                 CricManager.HttpClient.get('/Services/UserService.svc/LeaderBoard?id=' + seriesId, this.leaderBoardXHRSuccess, this.leaderBoardXHRFailure, this);
             },
             /**
-             * Handles the success of scoreCard retrieve call
-             */
+            * Handles the success of scoreCard retrieve call
+            */
             leaderBoardXHRSuccess: function (data) {
                 this.leaderBoardData = data;
                 this.leaderBoardList = data.TeamScores;
@@ -1629,8 +1744,8 @@ $(function () {
 
             },
             /**
-             * Handles the error in the call of scoreCard
-             */
+            * Handles the error in the call of scoreCard
+            */
             leaderBoardXHRFailure: function (err) {
                 this.viewHandle.hideLoader();
                 this.viewHandle.showError("Unable to fetch leaderboard.");
@@ -1646,22 +1761,22 @@ $(function () {
             //can be used to not call the service every time and only show the modal
             isReady: false,
             /**
-             * this is the first function to be called to start the processing.
-
-             */
+            * this is the first function to be called to start the processing.
+            
+            */
             ready: function (ev) {
                 var seriesId = $(ev.currentTarget).data('id');
                 var isMiniLeague = $(ev.currentTarget).data('isminileague');
                 this.bizHandle = CricManager.VariableResolve.resolve(this.bizHandle);
 
-                this.bizHandle.init(seriesId,isMiniLeague);
+                this.bizHandle.init(seriesId, isMiniLeague);
 
             },
             /**
-             * Render the leaderboard template.
-             * This function is also not called each time the leaderboard is loaded. It is to be used only when we need to re-render
-             * the leaderboard template.
-             */
+            * Render the leaderboard template.
+            * This function is also not called each time the leaderboard is loaded. It is to be used only when we need to re-render 
+            * the leaderboard template.
+            */
             renderLeaderBoard: function () {
 
                 CricManager.TemplateService.renderTemplate(this.leaderBoardTriggerElement, this.templateName, this.bizHandle.leaderBoardData);
@@ -1687,7 +1802,7 @@ $(function () {
 
             },
             setScroll: function () {
-                $('.scrollbox1').enscroll({
+                $('.scrollbox3').enscroll({
                     showOnHover: true,
                     verticalTrackClass: 'track3',
                     verticalHandleClass: 'handle3'
@@ -1907,15 +2022,14 @@ $(function () {
         },
         PlayerPoolLoaded: false,
         Teams: [
-            { ShortTeamName: 'CSK', FullTeamName: 'ChennaiSuperKings' },
-            { ShortTeamName: 'DD', FullTeamName: 'DelhiDaredevils' },
-            { ShortTeamName: 'KKR', FullTeamName: 'KolkataKnightRiders' },
-            { ShortTeamName: 'KXIP', FullTeamName: 'KingsElevenPunjab' },
-            { ShortTeamName: 'MI', FullTeamName: 'MumbaiIndians' },
-            { ShortTeamName: 'PWI', FullTeamName: 'PuneWarriorsIndia' },
-            { ShortTeamName: 'RCB', FullTeamName: 'RoyalChallengersBangalore' },
-            { ShortTeamName: 'RR', FullTeamName: 'RajasthanRoyals' },
-            { ShortTeamName: 'SH', FullTeamName: 'SunrisersHyderbad' }]
+            { ShortTeamName: 'AUS', FullTeamName: 'Australia' },
+            { ShortTeamName: 'ENG', FullTeamName: 'England' },
+            { ShortTeamName: 'IND', FullTeamName: 'India' },
+            { ShortTeamName: 'NZ', FullTeamName: 'NewZealand' },
+            { ShortTeamName: 'PAK', FullTeamName: 'Pakistan' },
+            { ShortTeamName: 'RSA', FullTeamName: 'SouthAfrica' },
+            { ShortTeamName: 'SL', FullTeamName: 'SriLanka' },
+            { ShortTeamName: 'WI', FullTeamName: 'WestIndies' }]
     };
 
     $(document).ready(function () {
