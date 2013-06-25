@@ -671,6 +671,12 @@ $(function () {
                                 //increment the overseas player count if allowed
                                 this.overseasPlayerCount++;
                             }
+                        } else if(!this.validateSamePlayerCount(data)){           
+                            //validating the playercount for number of players from same team
+                            return {
+                                status: false,
+                                msg: "You can't have more than " + this.allowedSameTeamPlayersCount + " players from same team."
+                            };
                         }
 
 
@@ -691,12 +697,22 @@ $(function () {
                 };
 
             },
+            validateSamePlayerCount: function (data) {
+                var i = 0;
+                var previousPlayerCount = 0;
+                for (i = 0; i < this.userTeamList.length; i++) {
+                    if (this.userTeamList[i].Id && this.userTeamList[i].FullTeamName === data.FullTeamName) {
+                        previousPlayerCount++;
+                    }
+                }
+                if (previousPlayerCount == this.allowedSameTeamPlayersCount) {
+                    return false;
+                }
+                return true;                
+            },
             //TODO: implement an empty function for this later on or modify the filter code to work for this one too
             //i.e. multiple filters
             findEmptySpace: function (data) {
-                //var emptyObjects = CricManager.Search.findObjects(this.userTeamList, { Id: undefined }, 'Id');
-                //return CricManager.Search.findIndex(emptyObjects, { Type: data.Type }, 'Type');
-
                 var i = 0;
                 for (i = 0; i < this.userTeamList.length; i++) {
                     if (!this.userTeamList[i].Id && this.userTeamList[i].Type == data.Type) {
