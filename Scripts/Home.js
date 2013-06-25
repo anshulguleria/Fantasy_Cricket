@@ -623,6 +623,7 @@ $(function () {
             playersCount: 0,
             overseasPlayerCount: 0,
             allowedOverseasPlayers: 4,
+            allowedSameTeamPlayersCount: 5,
 
 
             seriesId: '27736440632901917',
